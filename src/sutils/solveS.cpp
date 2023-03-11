@@ -94,7 +94,7 @@ abcd::solveS ( MV_ColMat_double &f )
         /*-----------------------------------------------------------------------------
          *  MUMPS initialization
          *-----------------------------------------------------------------------------*/
-        mumps_S.sym = 1;
+        mumps_S.sym = 1;  // 2: general symmetric, 1: spd
         mumps_S.par = 1;
 
         int job = 2;
@@ -117,6 +117,23 @@ abcd::solveS ( MV_ColMat_double &f )
             mumps_S.setIcntl(3, -1);
             mumps_S.setIcntl(4, -1);
         }
+
+// /*
+       mumps_S.setIcntl(2, 1);
+       mumps_S.setIcntl(3, 6);
+       mumps_S.setIcntl(4, 2);
+//   */ 
+     	mumps_S.setIcntl(35, 2);
+        mumps_S.setIcntl(36, 1);
+
+ //      mumps_S.setIcntl(38, 1000);
+// Possible values : between 0 and 1000 (1000 is no compression and 0 is full compression);
+
+       //mpi::broadcast(intra_comm, BLR_threshold, 0);
+       //mpi::broadcast(inter_comm, BLR_threshold, 0);
+       mumps_S.setCntl(7,BLR_threshold);
+       cout << "SolveS mumps_S.setCntl(7): " <<  mumps_S.getCntl(7) << endl;
+
 
         if(inter_comm.rank() == 0){
             if(write_s.length() != 0)

@@ -63,6 +63,7 @@ void abcd::distributeData()
         }
 
         // Distribute partitions to the masters
+//        abcd::partitionWeights(partitionsSets, m_nnz_parts, parallel_cg);
         abcd::partitionWeights(partitionsSets, m_parts, parallel_cg);
 
         // Send the actual partitions to their respective masters
@@ -80,6 +81,7 @@ void abcd::distributeData()
                 inter_comm.send(i, 2, dims);
 		// send the origin number of columns of the matrix
                 inter_comm.send(i, 21, n);
+		//cout << "____sent to "<< i << " " << parts[j].dim(0) << " " << parts[j].dim(1) << endl;
 
 		// send the partition matrix arrays
                 inter_comm.send(i, 3, parts[j].colind_ptr(), parts[j].NumNonzeros());
@@ -281,6 +283,8 @@ void abcd::createInterconnections()
     }
 
 
+    loc_merge_index =  mergeSortedVectors(local_column_index);
+
     // All-to-all exchange of column indices
     std::map<int, std::vector<int> > their_cols; // columns received from others
     std::vector<mpi::request> reqs_c; // sent requests
@@ -335,6 +339,7 @@ void abcd::createInterconnections()
                 vol++;
             }
         }
+   // cout << "rank "<< IRANK << " vol " << vol<< endl;
     mpi::reduce(inter_comm, vol, maxVol, mpi::maximum<int>(),0);
     mpi::reduce(inter_comm, vol, minVol, mpi::minimum<int>(),0);
     mpi::reduce(inter_comm, vol, totVol, std::plus<int>(),0);

@@ -53,6 +53,7 @@ void abcd::initializeDirectSolver()
     int *sym_perm;
 
     mpi::broadcast(comm, icntl[Controls::nbparts], 0);
+    mpi::broadcast(comm, BLR_threshold, 0);
 
     if(comm.size() > parallel_cg) {
         if(instance_type == 0) {
@@ -116,4 +117,12 @@ void abcd::initializeDirectSolver()
         mumps.jcn = &jcn_aug[0];
         mumps.a = &val_aug[0];
     }
+    
+       //mpi::broadcast(inter_comm, BLR_threshold, 0);
+       //mpi::broadcast(intra_comm, BLR_threshold, 0);
+        //~ mpi::broadcast(inter_comm, BLR_threshold, 0);
+       mumps.setCntl(7,BLR_threshold);
+
+       cout << "  mu.setCntl(7): " <<  mumps.getCntl(7) << " " << IRANK << endl;
+
 }    /* ----- end of method abcd::initializeDirectSolver ----- */

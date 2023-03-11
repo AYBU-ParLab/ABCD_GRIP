@@ -169,7 +169,7 @@ int main(int argc, char* argv[])
         obj.val = (double *) realloc(obj.val, obj.nz * sizeof(double));
 
         cout << "Matrix information : ";
-        cout << matrix_file <<" m = " << obj.m << "; n = " << obj.n << "; nz = " << obj.nz << endl;
+        cout << matrix_file <<" m = " << obj.m << " n = " << obj.n << " nz = " << obj.nz << endl;
 
         fclose(f);
 
@@ -341,6 +341,8 @@ int main(int argc, char* argv[])
         obj.icntl[Controls::part_type] = pt.get<int>("partitioning.part_type", 2);
 
         obj.icntl[Controls::part_guess] = pt.get<int>("partitioning.part_guess", 0);
+        obj.dcntl[Controls::part_seed] =  atoi(argv[6]); 
+       
 
         if(argc <= 3) obj.icntl[Controls::nbparts] = pt.get<int>("partitioning.nbparts");
         else obj.icntl[Controls::nbparts] = atoi(argv[3]);
@@ -503,10 +505,15 @@ int main(int argc, char* argv[])
             cout << "Starting point for CG specified, Block Size is changed to 1.\n";
             obj.icntl[Controls::block_size] = 1;
         } else {
-            if(argc <= 4) obj.icntl[Controls::block_size] = pt.get<int>("system.block_size", 1);
-            else obj.icntl[Controls::block_size] = atoi(argv[4]);
+            /*if(argc <= 4) obj.icntl[Controls::block_size] = pt.get<int>("system.block_size", 1);
+            else obj.icntl[Controls::block_size] = atoi(argv[4]);*/
+	    obj.icntl[Controls::block_size] = pt.get<int>("system.block_size", 1);
             cout << "Block Size: " << obj.icntl[Controls::block_size] << endl;
         }
+        if(argc <= 6) obj.BLR_threshold = 0;
+        else obj.BLR_threshold = atof(argv[5]);
+
+	cout << "argv[4] BLR_threshold: " << obj.BLR_threshold << endl;
 
         obj.icntl[Controls::itmax] = pt.get<int>("system.itmax", 2000);
         obj.dcntl[Controls::threshold] = pt.get<double>("system.threshold", 1e-12);

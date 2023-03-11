@@ -35,5 +35,6 @@ int metis_recursive = 0;
 
 CompRow_Mat_double ColumnSparsifying(CompRow_Mat_double &inMtx);
 
-void GRIP_Partitioning(CompRow_Mat_double &Ddrop,idx_t nParts, idx_t* part, double imb);
+void GRIP_Partitioning(CompRow_Mat_double &Ddrop, idx_t nParts, idx_t* part, double imb);
+void GRIP_Partitioning_withAAT(CompRow_Mat_double &AAT, idx_t nParts, idx_t* part, double imb);
 

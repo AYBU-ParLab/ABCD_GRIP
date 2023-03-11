@@ -82,13 +82,12 @@ void abcd::partitionMatrix()
             icntl[Controls::nbparts] = 1;
         } else if (m_o <= 8) {
             icntl[Controls::nbparts] = 2;
-        } else if (m_o <= 1000) {
+        } else if (m_o <= 1600) {
             icntl[Controls::nbparts] = 4;
-        } else if (m_o <= 50000) {
+        } else if (m_o <= 160000) {
             icntl[Controls::nbparts] = 8;
-        } else if (m_o <= 100000) {
-            icntl[Controls::nbparts] = ceil((double)m_o / 10000);
-        } else {
+        } 
+	else {
             icntl[Controls::nbparts] = ceil((double)m_o / 20000);
         }
         LINFO << "Estimated number of partitions: " << icntl[Controls::nbparts];
@@ -185,7 +184,7 @@ void abcd::partitionMatrix()
         double t = MPI_Wtime();
         LINFO << "Launching PaToH";
 
-        PaToH_Initialize_Parameters(&args, PATOH_CUTPART, PATOH_SUGPARAM_DEFAULT);
+        PaToH_Initialize_Parameters(&args, PATOH_CONPART, PATOH_SUGPARAM_DEFAULT);
         args._k = icntl[Controls::nbparts];
 
 	/* Allocate PaToH structure */
@@ -319,7 +318,7 @@ void abcd::partitionMatrix()
         
         metis_scaleMax = 100; //Floating point interpolation to int
         metis_seed = -1;  
-        metis_epsilon = 0; // // for dropping some tiny values in graph after AAT e.g 1e-16
+        metis_epsilon = 1e-16; // // for dropping some tiny values in graph after AAT e.g 1e-16
         metis_recursive = 0; // for calling METIS_PartGraphRecursive (optional)
         
         GRIP_Partitioning(Ddrop, nParts, part, imb);
@@ -336,6 +335,7 @@ void abcd::partitionMatrix()
         for (int i = 0; i < icntl[Controls::nbparts]; i++) {
            // row_indices: stores indices of rows for each part
             row_indices.push_back(vector<int>());
+//	    cout << "partweights " << partweights[i] << endl;
             if (partweights[i] == 0) {
                 info[Controls::status] = -6;
                 mpi::broadcast(comm, info[Controls::status], 0);
@@ -484,11 +484,12 @@ void abcd::analyseFrame()
         // Create the part (if augmentation, just a local tmp part)
         if(icntl[Controls::aug_type] == 0) {
             parts[k] = CompRow_Mat_double(sub_matrix(part, column_index[k]));
+//	    cout << "parts[k].n " << parts[k].dim(0) << " " << parts[k].dim(1) << endl;
         } else {
             loc_parts[k] = CompCol_Mat_double(part);
         }
     }
-    LINFO << "Partitions created in: " << MPI_Wtime() - t << "s.";
+    LINFO << "Partitions created in: " << MPI_Wtime() - t << " s ";
 
 #ifdef WIP
     // test augmentation!

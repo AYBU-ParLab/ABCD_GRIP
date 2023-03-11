@@ -118,5 +118,21 @@ void abcd::initializeMumps(MUMPS &mu, bool local)
         mu.setIcntl(8, -2);
         mu.setIcntl(12, 2);
         mu.setIcntl(14, 90);
+
+
+/*       mu.setIcntl(2, 1);
+       mu.setIcntl(3, 6);
+       mu.setIcntl(4, 2);
+       
+       mu.setIcntl(35, 2);
+       mu.setIcntl(36, 1);
+  */     
+       //mpi::broadcast(inter_comm, BLR_threshold, 0);
+       //mpi::broadcast(intra_comm, BLR_threshold, 0);
+       //mu.setCntl(7,BLR_threshold);
+
+	//~ cout << "  mu.setCntl(7): " <<  mu.getCntl(7) << endl;
+
+
     }
 }               /* -----  end of function abcd::initializeMumps  ----- */

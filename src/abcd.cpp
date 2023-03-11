@@ -106,6 +106,7 @@ abcd::abcd()
     // block Cimmino
     icntl[Controls::block_size] = 1;
     icntl[Controls::itmax] = 1000;
+    icntl[Controls::block_size] = 1;
     dcntl[Controls::threshold] = 1e-12;
     dcntl[Controls::alpha] = 1.0;
     // augmentation
@@ -274,15 +275,17 @@ int abcd::initializeMatrix()
         for(int j = 0; j < nrhs; j++){
             VECTOR_double xf_col(m);
             for(int i = 0; i < m; i++) {
-                xf_col[i] = (double)(i+1) / m;
+                //xf_col[i] = (double)(i+1) / m;
+		xf_col[i] = (double)((rand())%100+1)/99.0;
             }
             Xf.setCol(xf_col, j);
         }
 	// Create the RHS as rhs=A*Xf
-        MV_ColMat_double BB = smv(A, Xf);
+        //MV_ColMat_double BB = smv(A, Xf);
         // To Do : make it for Multiple RHS
         rhs = new double[m * nrhs];
-        double *BBref = BB.ptr();
+        //double *BBref = BB.ptr();
+        double *BBref = Xf.ptr();
         for(int i = 0; i < m; i++){
             rhs[i] = BBref[i];
         }
@@ -293,6 +296,15 @@ int abcd::initializeMatrix()
             }
         }*/
         LINFO << "> RHS initialized in " << setprecision(2) << MPI_Wtime() - t << "s.";
+
+        /*LINFO <<  " ------------------ RHS is being written on a file --------" ;
+        ofstream f;
+        f.open("rhs.mtx");
+        f << "%%MatrixMarket matrix coordinate real general\n";
+        f << m << " " << 1 << " " << m << "\n";
+        for(int i = 0; i < m; i++){
+           f << std::scientific <<std::setprecision(20)  << rhs[i] << "\n";
+        }*/
     }
     return 0;
 }    /* ----- end of method abcd::initializeMatrix ----- */
@@ -401,6 +413,7 @@ int abcd::factorizeAugmentedSystems()
         }
         abcd::analyseAugmentedSystems(mumps);
     }
+    
     if(IRANK == 0){
         LINFO << "Initialization time : " << MPI_Wtime() - t;
     }
@@ -462,7 +475,17 @@ int abcd::solveSystem()
 #endif //WIP
                 ){
             abcd::distributeRhs();
-            abcd::bcg(B);
+
+        // int ss = std::max<int>(icntl[Controls::block_size], nrhs);
+        int ss = 1;
+	 if(ss==1){
+		 cout << "CG starts" << endl;
+		 abcd::bcg(B);
+	 }
+	 else{
+		 cout << "BCG starts" << endl;
+		 abcd::bcg(B);
+	 }
         // Augmented Block Cimmino
         } else{
             int temp_bs = icntl[Controls::block_size];

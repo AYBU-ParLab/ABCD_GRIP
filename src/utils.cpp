@@ -364,6 +364,180 @@ void abcd::get_nrmres(MV_ColMat_double &x, MV_ColMat_double &b,
     mpi::all_reduce(inter_comm, nrmXV.ptr(), rn, nrmX.ptr(), std::plus<double>());
 }               /* -----  end of function abcd::get_nrmres  ----- */
 
+
+void abcd::get_nrmres(VECTOR_double &x, VECTOR_double &b,
+                      double &nrmR, double &nrmX)
+{
+    int rn = 1;
+    int rm = x.size();
+
+    nrmX = 0;
+    nrmR = 0;
+
+    double nrmXV = 0;
+    double nrmRV = 0;
+
+    VECTOR_double loc_x(rm, 0);
+    VECTOR_double loc_r(m, 0);
+    VECTOR_double loc_xfmx(rm, 0);
+
+    int pos = 0;
+	for(int i = 0; i < rm; i++) {
+        if(comm_map[i] == 1) {            
+            nrmXV += abs(x(i));            
+            //nrmXV += x(i) * x(i);            
+        }
+    }
+
+    for(int p = 0; p < nb_local_parts; p++) {        
+		VECTOR_double compressed_x = VECTOR_double((partitions[p].dim(1)), 0);
+			
+		int x_pos = 0;
+		for(size_t i = 0; i < local_column_index[p].size(); i++) {
+			int ci = local_column_index[p][i];
+			compressed_x(x_pos) = x(ci);
+			x_pos++;
+		}
+		//~ if(IRANK ==1)
+			//~ cout << "\n ---compressed_x "<< compressed_x << endl;
+			
+		//~ cout << endl <<"compressed x" << endl << compressed_x ;
+		VECTOR_double vj =  partitions[p] * compressed_x;
+		//~ cout << endl << "partitions" << endl << partitions[p] ;
+		//~ cout << endl << "vj" << endl << vj ;
+		int c = 0;
+		for(int i = pos; i < pos + partitions[p].dim(0); i++)
+			loc_r(i) = vj[c++];
+	
+
+        pos += partitions[p].dim(0);
+    }
+	
+	//~ cout << "loc_r" <<endl << loc_r ;
+	//~ cout << "b" << endl << b ;
+	vectorsubtract(loc_r,b);
+    //~ loc_r  = b - loc_r;
+
+
+	VECTOR_double loc_r_j = loc_r;
+	nrmRV = infNorm(loc_r_j);
+  	//nrmRV = squares(loc_r_j);
+	//~ std::cout << "norm rv " << nrmRV << " "<< loc_r << std::endl;
+    
+
+    mpi::all_reduce(inter_comm, &nrmRV, rn, &nrmR, mpi::maximum<double>());
+    //mpi::all_reduce(inter_comm, &nrmRV, rn, &nrmR, std::plus<double>());
+    mpi::all_reduce(inter_comm, &nrmXV, rn, &nrmX, std::plus<double>());
+
+//	nrmX = sqrt(nrmX);
+//	nrmR = sqrt(nrmR);
+
+    //~ std::cout << nrmB[0] << " " << nrmX << " " << nrmMtx <<" " << nrmR << std::endl;
+
+}
+
+void abcd::scalarmult_vectoradd(double *p, double ap, double *r){
+	int lm = loc_merge_index.size();
+    for(int i = 0; i < lm; i++) {
+		 r[i]= ( p[i] * ap ) + r[i];  
+    }    
+}
+
+void abcd::scalarmult_vectoradd(double *p, double ap, double *r, double *out){
+	int lm = loc_merge_index.size();
+    for(int i = 0; i < lm; i++) {
+		 out[i]= ( p[i] * ap ) + r[i];  
+    }    
+}
+
+double abcd::parallelddot(double *p, double *ap)
+{
+    //~ int lm = p.size();
+    //~ int rm = ap.size();
+    //~ if(lm != rm) throw - 800;    
+    //~ double loc_r = 0,r=0;
+	//~ int pos =0;
+	
+	
+	//~ VECTOR_double loc_p(lm, 0);
+	
+	//~ for(int k = 0; k < nb_local_parts; k++) {
+		//~ for(size_t i = 0; i < local_column_index[k].size(); i++) 
+		//~ {
+			//~ int ci = local_column_index[k][i];			
+			//~ if(comm_map[ci] == 1) {			
+				//~ loc_p(ci) = p[ci] * ap[ci];
+				//~ pos++;
+			//~ }			
+		//~ }
+	//~ }       
+	//~ for(int i = 0; i < lm; i++){
+        //~ loc_r += loc_p(i);
+    //~ }
+    
+    
+    double loc_r = 0, r=0;
+    for(int k = 0; k < loc_merge_index.size(); k++) 
+    {		
+		if(comm_map[k] == 1) {			
+			loc_r += p[k] * ap[k];				
+		}					
+	}       
+    mpi::all_reduce(inter_comm, loc_r, r, std::plus<double>());
+    return r;
+}
+
+void abcd::vectorsubtract(VECTOR_double &p, VECTOR_double &ap)
+{
+    int lm = p.size();
+    int rm = ap.size();    
+    if(lm != rm) throw - 800;
+    for(int i = 0; i < lm; i++) {        
+		p(i) = p(i) - ap(i);        
+    }
+    
+	//~ for(int k = 0; k < nb_local_parts; k++) {
+		//~ for(size_t i = 0; i < local_column_index[k].size(); i++) 
+		//~ {
+			//~ int ci = local_column_index[k][i];							
+			//~ p(ci) = p(ci) + ap(ci)	;								
+		//~ }
+	//~ } 
+
+
+	//~ int lm = loc_merge_index.size();
+    //~ for(int i = 0; i < lm; i++) {        
+		//~ p(i) = p(i) - ap(i);        
+    //~ }
+}
+
+///vectorsubtract
+void abcd::vectorsubtract(VECTOR_double &p, VECTOR_double &ap,VECTOR_double &res)
+{
+    //~ cout << "\n subtract psize " << p.size() << " loc_merge_indexsize: " << loc_merge_index.size() << endl ;
+    //~ int lm = p.size();
+    //~ int rm = ap.size();
+    //~ if(lm != rm) throw - 800;
+    //~ for(int i = 0; i < lm; i++) {        
+		//~ res(i) = p(i) - ap(i);        
+    //~ }
+    
+	//~ for(int k = 0; k < nb_local_parts; k++) {
+		//~ for(size_t i = 0; i < local_column_index[k].size(); i++) 
+		//~ {
+			//~ int ci = local_column_index[k][i];							
+			//~ res(ci) = p(ci) - ap(ci);								
+		//~ }
+	//~ } 
+
+	int lm = loc_merge_index.size();
+    for(int i = 0; i < lm; i++) {        
+		res(i) = p(i) - ap(i);        
+    }
+}
+
+
+
 /*!
  *  \brief Binary or
  *

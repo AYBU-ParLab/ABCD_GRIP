@@ -42,6 +42,216 @@
 
 #include <iostream>
 
+
+
+ void abcd::cg(MV_ColMat_double &b)
+{
+    std::streamsize oldprec = std::cout.precision();
+    double t1_total, t2_total,t3_total =0 ,t4_total = 0;
+    
+    const double threshold = dcntl[Controls::threshold];
+    const int block_size = icntl[Controls::block_size];    
+    const int itmax = icntl[Controls::itmax];
+    	
+    if(!use_xk) {
+        Xk = MV_ColMat_double(n, nrhs, 0);
+    }
+
+    MV_ColMat_double u(m, nrhs, 0);
+    // get a reference to the nrhs first columns
+    u = b(MV_VecIndex(0, b.dim(0)-1), MV_VecIndex(0,nrhs-1));
+
+    MV_ColMat_double p(n, 1, 0);
+    MV_ColMat_double qp(n, 1, 0);
+    MV_ColMat_double r(n, 1, 0);
+
+
+    MV_ColMat_double gu, bu, pl;
+    
+    double thresh = threshold;
+
+    double *qp_ptr = qp.ptr();
+
+    nrmB = std::vector<double>(nrhs, 0);
+    VECTOR_double u_j = u(0);
+    double lnrmBs = infNorm(u_j);
+    mpi::all_reduce(inter_comm, &lnrmBs, 1,  &nrmB[0] , mpi::maximum<double>());
+
+    VECTOR_double u_k = u(0);
+     
+    mpi::broadcast(inter_comm, nrmMtx, 0);
+
+    // **************************************************
+    // ITERATION k = 0                                 *
+    // **************************************************
+
+    t1_total = MPI_Wtime();
+    if(use_xk) {
+        MV_ColMat_double sp = sumProject(1e0, b, -1e0, Xk);
+        r.setCols(sp, 0, 1);
+        cout << "use_xk" << endl;
+    } else {
+        MV_ColMat_double sp = sumProject(1e0, b, 0, Xk);
+        r.setCols(sp, 0, 1);         
+    }
+    
+	//~ if(IRANK==7){ 
+		//~ for(int k=0;k<column_index.size();k++) {
+			//~ for(int i=0;i<column_index[k].size();i++) cout<< column_index[k][i] << " ";
+			//~ cout << endl;
+		//~ }
+		//~ for(int k=0;k<local_column_index.size();k++) {
+			//~ for(int i=0;i<local_column_index[k].size();i++) cout<< local_column_index[k][i] << " ";
+			//~ cout << endl;
+		//~ }
+		//~ for(int k=0;k<loc_merge_index.size();k++) {
+			//~ cout<< loc_merge_index[k] << " _ ";			
+		//~ }
+		//~ cout << endl;
+		//cout << partitions[IRANK] << endl;
+		//cout << endl << parts[IRANK] << endl;
+		//~ ////~ cout << "\n rank: "<<IRANK<<" m: " << m << " r  \n" << r << endl;   
+		//~ }
+	
+	//~ sleep(1);
+	
+	//~ sleep(1);
+	//~ cout << "\n rank: "<<IRANK<<" m: " << m << " n: "<< n << " loc_n " << loc_n <<" merge size "<< merge_index.size()<< endl;   
+	
+	//~ if(IRANK==1){ for(int i=0;i<column_index[0].size();i++) cout<< column_index[0][i] << " ";
+		//~ cout << "\n rank: "<<IRANK<<" m: " << m << " r  \n" << r << endl;   }
+	//~ sleep(1);
+	//~ if(IRANK==6){ for(int i=0;i<column_index[0].size();i++) cout<< column_index[0][i] << " ";
+		//~ cout << "\n rank: "<<IRANK<<" m: " << m << " r  \n" << r << endl;   }
+	//~ sleep(1);
+	//~ if(IRANK==7){ for(int i=0;i<column_index[0].size();i++) cout<< column_index[0][i] << " ";
+		//~ cout << "\n rank: "<<IRANK<<" m: " << m << " r  \n" << r << endl;   }
+	//~ sleep(1);    
+    //~ return;
+
+	//~ if(IRANK==0)
+		//~ {
+			//~ for (int i =0 ; i< n ; i++)
+			//~ {
+				//~ if(comm_map[i] == 1) {
+					//~ cout <<IRANK << ") parallel_cg " << parallel_cg<< " b size " << b.dim(0) << " " << i <<" " << r(i,0) << endl;
+				//~ }
+			//~ }
+		//~ }
+	
+    t1_total = MPI_Wtime() - t1_total;
+
+    p = r;
+    
+    
+    VECTOR_double x = Xk(0);
+    double *x_ptr = x.ptr();
+    
+    double * p_ptr = p.ptr();
+    double * r_ptr = r.ptr();    
+    
+    VECTOR_double rnew(n, 0.0);   
+        
+    double *rnew_ptr = rnew.ptr();
+    
+    double scalar_gamma, scalar_alpha;
+    int it = 0;
+    double rho = 1;
+    
+    double ti = MPI_Wtime();
+
+    t2_total = MPI_Wtime();
+    rho = compute_rho(x, u_k);
+    t2_total = MPI_Wtime() - t2_total;
+    if(comm.rank() == 0) {
+        LINFO2 << "ITERATION 0  rho = " << scientific << rho << setprecision(oldprec);
+    }
+    
+    double scalar_r, scalar_r_new;    
+    
+    scalar_r = abcd::parallelddot(r_ptr, r_ptr);
+    
+    while(true) {
+        it++;
+        
+        double t = MPI_Wtime();		
+        // qp = Hp
+        qp = sumProject(0e0, b, 1e0, p);        
+        double t1 = MPI_Wtime() - t;
+                
+        double *qp_k_ptr = qp.ptr();
+        
+        scalar_gamma =  scalar_r / abcd::parallelddot(p_ptr, qp_k_ptr);             
+                
+                
+        //~ abcd::scalarmult(p_k , scalar_gamma, tem_k);        
+        //~ abcd::vectoradd(x , tem_k);        
+        abcd::scalarmult_vectoradd(p_ptr , scalar_gamma ,x_ptr,x_ptr);
+        
+        //~ abcd::scalarmult(qp_k , scalar_gamma);        
+        //~ abcd::vectorsubtract(r_k , qp_k, rnew_k);
+        abcd::scalarmult_vectoradd(qp_k_ptr , -scalar_gamma ,r_ptr, rnew_ptr);
+        
+        scalar_r_new = abcd::parallelddot(rnew_ptr, rnew_ptr);        
+        scalar_alpha =  scalar_r_new / scalar_r ; 
+                
+        scalar_r = scalar_r_new;
+        
+        //~ abcd::scalarmult(p_k , scalar_alpha, tem_k);        
+        //~ abcd::vectoradd(rnew_k , tem_k ,p_k);        
+        abcd::scalarmult_vectoradd(p_ptr , scalar_alpha ,rnew_ptr, p_ptr);
+        
+		double t2 = MPI_Wtime();
+		//if(itmax < 0)
+			rho = abcd::compute_rho(x, u_k);
+        t2 = MPI_Wtime() - t2;
+        
+        t = MPI_Wtime() - t;
+        if(comm.rank() == 0 && icntl[Controls::verbose_level] >= 2) {
+            int ev = icntl[Controls::verbose_level] >= 4 ? 1 : 10;
+            LOG_EVERY_N(ev, INFO) << "ITERATION " << it <<
+                " rho = " << scientific << rho <<
+                "  Timings: " << setprecision(2) << t <<
+                setprecision(oldprec); // put precision back to what it was before
+            
+        }
+                
+        if((it >= itmax) ||	 (rho < thresh)) break; 
+        
+        for(int ii=0;ii<loc_merge_index.size();ii++)
+			r_ptr[ii] = rnew_ptr[ii];
+        //~ r_k = rnew_k;
+         
+        t1_total += t1;
+        t2_total += t2;
+    }
+    
+    //~ maxiter = it;
+    
+    //~ Xk(0) = x;
+    //~ r(0) = r_k;
+
+    if(inter_comm.rank() == 0) {
+        LINFO << "CG Rho: " << scientific << rho ;
+        LINFO << "CG Iterations : " << setprecision(2) << it ;
+        LINFO << "CG TIME : " << scientific << MPI_Wtime() - ti ;
+        LINFO << "SumProject time : " << t1_total ;
+        LINFO << "Rho Computation time : " << t2_total ;
+    }
+    if (icntl[Controls::aug_type] != 0)
+        return;
+
+    info[Controls::nb_iter] = it;
+
+    if(IRANK == 0) {
+        solution = MV_ColMat_double(n_o, nrhs, 0);
+        sol = solution.ptr();
+    }
+    
+    centralizeVector(sol, n_o, nrhs, Xk.ptr(), n, nrhs, glob_to_local_ind, &dcol_[0]);
+}
+
+
 /*!
  *  \brief Uses Stabilized Block-CG to solve Hx = k
  *
@@ -311,6 +521,32 @@ double abcd::compute_rho(MV_ColMat_double &x, MV_ColMat_double &u)
     dinfo[Controls::scaled_residual] = minNrmR/nrmB[min_j];
     return rho;
 }               /* -----  end of function abcd::compute_rho  ----- */
+
+
+double abcd::compute_rho(VECTOR_double &x, VECTOR_double &u)
+{
+    double rho = 999.999;
+    
+    double nrmX;
+    double nrmR;
+
+    abcd::get_nrmres(x, u, nrmR, nrmX);
+    
+    //~ if(IRANK==1) cout << "nrmR " << nrmR << " " << nrmX << endl;
+    
+    double temp_rho = 0;
+  
+	//temp_rho = nrmR / nrmB[0];
+	temp_rho = nrmR / (nrmMtx*nrmX + nrmB[0]);
+	rho = temp_rho < rho ? temp_rho : rho;	
+	        
+    dinfo[Controls::backward] = rho;
+    dinfo[Controls::residual] = nrmR;
+    dinfo[Controls::scaled_residual] = nrmR/nrmB[0];
+    
+    //~ cout << nrmR << " " << nrmB[0] << endl;
+    return rho;
+}
 
 /*!
  *  \brief Apply Generalized Modified Gram-Schmidt squared

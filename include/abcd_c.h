@@ -52,6 +52,7 @@ enum controls {
    abcd_aug_blocking       ,
 
    abcd_part_imbalance     ,
+   abcd_part_seed	     ,
    abcd_threshold          ,
 
    abcd_status             ,

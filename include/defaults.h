@@ -291,6 +291,7 @@ namespace Controls{
     enum dcontrols {
         /* The imbalance factor in PaToH case */
         part_imbalance,
+        part_seed,
 
         /* The stoping threshold */
         threshold     ,

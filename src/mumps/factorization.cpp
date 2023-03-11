@@ -92,6 +92,7 @@ void abcd::factorizeAugmentedSystems(MUMPS &mu)
     double max_time;
     double min_time;
     double avg_time;
+    double smflop;
     if(instance_type == 0) {
         double mem = mu.getInfoG(22)/intra_comm.size();
         mpi::reduce(inter_comm, mem, smem, std::plus<double>(), 0);
@@ -107,6 +108,7 @@ void abcd::factorizeAugmentedSystems(MUMPS &mu)
 
         double flop = mu.getRinfoG(3);
 	mpi::reduce(inter_comm, flop, sflop, std::plus<double>(),0);
+	mpi::reduce(inter_comm, flop, smflop, mpi::maximum<double>(),0);
 
         int prec = cout.precision();
         cout.precision(2);
@@ -125,7 +127,8 @@ void abcd::factorizeAugmentedSystems(MUMPS &mu)
     if(IRANK == 0) LINFO << "Factorization average memory : " << setw(6) << smem << " M";
     if(IRANK == 0) LINFO << "Factorization maximum memory : " << setw(6) << max_mem << " M";
     if(IRANK == 0) LINFO << "Factorization total flops : " << setw(6) << sflop << " flops";
-    if(IRANK == 0) LINFO << "Factorization max time : " << setw(6) << max_time << " flops";
-    if(IRANK == 0) LINFO << "Factorization min time : " << setw(6) << min_time << " flops";
-    if(IRANK == 0) LINFO << "Factorization avg time : " << setw(6) << avg_time << " flops";
+    if(IRANK == 0) LINFO << "Factorization max time : " << setw(6) << max_time << " s";
+    if(IRANK == 0) LINFO << "Factorization min time : " << setw(6) << min_time << " s";
+    if(IRANK == 0) LINFO << "Factorization avg time : " << setw(6) << avg_time << " s";
+    if(IRANK == 0) LINFO << "Factorization max flops : " << setw(6) << smflop << " flops";
 }               /* -----  end of function abcd::factorizeAugmentedSystems  ----- */

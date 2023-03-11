@@ -234,6 +234,7 @@ public:
     **************************************************************************/
     /*! row indices of partitions for each partition */
     vector< vector<int> > row_indices;
+    std::vector<int> loc_merge_index;
 
     /*! The number of rows per partition */
     std::vector<int> nbrows;
@@ -310,6 +311,7 @@ public:
      */
     int operator() (int job_id);
 
+    double BLR_threshold;
 private:
 /*******************************************************************************
  * Attributes
@@ -539,6 +541,7 @@ private:
      * Cimmino
     **************************************************************************/
     void bcg(MV_ColMat_double &b);
+    void cg(MV_ColMat_double &b);
     int gqr(MV_ColMat_double &P, MV_ColMat_double &AP, MV_ColMat_double &R, int s, bool use_a);
     int gqr(MV_ColMat_double &p, MV_ColMat_double &ap, MV_ColMat_double &r, CompCol_Mat_double g, int s, bool use_a);
     void gmgs2(MV_ColMat_double &p, MV_ColMat_double &ap, MV_ColMat_double &r, int s, bool use_a);
@@ -580,11 +583,24 @@ private:
      * Utils
     **************************************************************************/
     double compute_rho(MV_ColMat_double &X, MV_ColMat_double &U);
+    double compute_rho(VECTOR_double &X, VECTOR_double &U);
+
+    void vectorsubtract(VECTOR_double &p, VECTOR_double &ap);
+    void vectoradd(VECTOR_double &p, VECTOR_double &ap);
+
+    void vectorsubtract(VECTOR_double &p, VECTOR_double &ap,VECTOR_double &t);
+    void vectoradd(VECTOR_double &p, VECTOR_double &ap,VECTOR_double &t);
+
+
+    void scalarmult_vectoradd(double *p, double ap, double *r);
+    void scalarmult_vectoradd(double *p, double ap, double *r,double *out);
+    double parallelddot(double *p, double *ap);
     double ddot(VECTOR_double &p, VECTOR_double &ap);
     void get_nrmres(MV_ColMat_double &x,
                     MV_ColMat_double &b,
                     VECTOR_double &nrmR,
                     VECTOR_double &nrmX);
+    void get_nrmres(VECTOR_double &x, VECTOR_double &b, double &nrmR, double &nrmX);
     void centralizeVector(double *dest, int dest_lda, int dest_ncols,
                           double *src,  int src_lda,  int src_ncols,
                           std::vector<int> globalIndex, double *scale);

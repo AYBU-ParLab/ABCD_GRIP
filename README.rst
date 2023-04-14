@@ -2,7 +2,7 @@
 The Augmented Block Cimmino Distributed Solver v1.0
 ==============================================
 
-**Note:** Check http://abcd.enseeiht.fr for more details.
+**Note:** Check http://abcd.enseeiht.fr or https://bitbucket.org/apo_irit/abcd/src/master/ for more details.
 
 Tested plateforms
 -----------------
